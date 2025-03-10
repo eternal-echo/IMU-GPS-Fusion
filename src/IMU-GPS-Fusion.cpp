@@ -190,6 +190,55 @@ double logLikelihoodGPS(const cv_state & X, const GPS_obs & y_gpsi)
 ///A function to initialise particles
 
 /// \param pRng A pointer to the random number generator which is to be used
+/**
+ * @brief 初始化粒子滤波器的状态粒子
+ * @details 该函数初始化一个15维的状态向量粒子，包含:
+ *          - 姿态(0-2): x,y,z欧拉角,从IMU测量初始化
+ *          - 角速度(3-5): x,y,z角速度,从IMU测量初始化
+ *          - 位置(6-8): x,y,z位置,初始化为带噪声的0
+ *          - 速度(9-11): x,y,z速度,初始化为带噪声的0
+ *          - 加速度(12-14): x,y,z加速度,初始化为带噪声的0
+ * 
+ * @param pRng 随机数生成器指针,用于生成高斯噪声
+ * @return smc::particle<cv_state> 返回初始化的粒子,权重设为1/N
+ *
+ * @note - 状态噪声标准差统一设为sqrt(0.1)
+ *       - N为粒子数量,在其他地方定义
+ *       - y_imu为IMU测量数据指针,在其他地方定义
+ *       - cv_state为自定义的状态类型
+ */
+smc::particle<cv_state> fInitialise(smc::rng *pRng)
+{
+  cv_state k;
+  
+  // 从IMU测量初始化姿态角,加入高斯噪声
+  k.stateSpace(0) = pRng->Normal(y_imu->measurementIMU.at(0),sqrt(.1)); //x姿态角
+  k.stateSpace(1) = pRng->Normal(y_imu->measurementIMU.at(1),sqrt(.1)); //y姿态角  
+  k.stateSpace(2) = pRng->Normal(y_imu->measurementIMU.at(2),sqrt(.1)); //z姿态角
+
+  // 从IMU测量初始化角速度,加入高斯噪声
+  k.stateSpace(3) = pRng->Normal(y_imu->measurementIMU.at(3),sqrt(.1)); //x角速度
+  k.stateSpace(4) = pRng->Normal(y_imu->measurementIMU.at(4),sqrt(.1)); //y角速度
+  k.stateSpace(5) = pRng->Normal(y_imu->measurementIMU.at(5),sqrt(.1)); //z角速度
+
+  // 初始化位置为带噪声的0
+  k.stateSpace(6) = pRng->Normal(0,sqrt(.1)); //x位置
+  k.stateSpace(7) = pRng->Normal(0,sqrt(.1)); //y位置
+  k.stateSpace(8) = pRng->Normal(0,sqrt(.1)); //z位置
+
+  // 初始化速度为带噪声的0
+  k.stateSpace(9) = pRng->Normal(0,sqrt(.1));  //x速度
+  k.stateSpace(10) = pRng->Normal(0,sqrt(.1)); //y速度
+  k.stateSpace(11) = pRng->Normal(0,sqrt(.1)); //z速度
+
+  // 初始化加速度为带噪声的0
+  k.stateSpace(12) = pRng->Normal(0,sqrt(.1)); //x加速度
+  k.stateSpace(13) = pRng->Normal(0,sqrt(.1)); //y加速度
+  k.stateSpace(14) = pRng->Normal(0,sqrt(.1)); //z加速度
+
+  // 返回初始化的粒子,权重设为1/N
+  return smc::particle<cv_state>(k, (1/N));
+}
 smc::particle<cv_state> fInitialise(smc::rng *pRng)
 {
   cv_state k;
