@@ -133,27 +133,34 @@ sensorH.set_size(9, 15);
   
 
 
-///The function corresponding to the log likelihood at specified time and position (up to normalisation)
-
-///  \param lTime The current time (i.e. the index of the current distribution)
-///  \param X     The state to consider 
+/**
+ * @brief 计算IMU测量的对数似然函数
+ * @details 计算当前粒子状态对IMU观测的对数似然值,用于粒子权重更新
+ * 
+ * @param X 当前粒子状态
+ * @param y_imui IMU观测值对象
+ * @return double 对数似然值
+ *
+ * 公式: log(L) = -1/2 * (z - Hx)' * R^(-1) * (z - Hx)
+ * 其中:
+ * z: IMU测量值(9维向量,包含姿态、角速度、加速度)
+ * H: 观测矩阵(9x15)
+ * x: 状态向量(15维)
+ * R: 测量噪声协方差矩阵(9x9)
+ */
 double logLikelihoodIMU(const cv_state & X, const IMU_obs & y_imui)
 {
-
- //std::cout << y_imui.measurementIMU << std::endl;
-//std::cout << ((y_imui.sensorH*X.stateSpace)) << std::endl;
-
+  // 计算测量残差: 实际测量值 - 预测测量值
   arma::mat temp = y_imui.measurementIMU-(y_imui.sensorH*X.stateSpace);
 
+  // 计算测量协方差矩阵的逆
   arma::mat covi = arma::inv(y_imui.CovarianceMatrixR);
-//std::cout << Rinv << std::endl;  
 
+  // 计算马氏距离: (z-Hx)'*R^(-1)*(z-Hx)
   arma::mat weight = arma::trans(temp)*arma::trans(covi)*(temp);
 
- // std::cout << "IMU Particle Weight: " << (-0.5*weight(0,0)) << std::endl;
-
-//std::cout << (weight(0,0)*weight(0,1)*weight(0,2)) << std::endl;
-  
+  // 返回对数似然值
+  // 注:负号是因为要将代价函数转化为似然函数
   return ((-0.5*weight(0,0)));
 }
 
@@ -236,29 +243,49 @@ void GPSKernel(long lTime, smc::particle<cv_state> & pFrom, smc::rng *pRng) {//m
   pFrom.AddToLogWeight(logLikelihoodGPS(*k, *y_gps));
   
 }
-void IMUKernel(long lTime, smc::particle<cv_state> & pFrom, smc::rng *pRng) {//movement for IMU measurements
+/**
+ * @brief IMU粒子滤波器的预测和更新步骤
+ * @details 这是粒子滤波中的采样/预测步骤,根据IMU测量更新粒子状态和权重
+ * @param lTime 当前时间步
+ * @param pFrom 待更新的粒子
+ * @param pRng 随机数生成器指针
+ * 
+ * 状态向量包含:
+ * 0-2: 姿态角(roll/pitch/yaw)
+ * 3-5: 角速度
+ * 6-8: 位置
+ * 9-11: 速度 
+ * 12-14: 加速度
+ */
+void IMUKernel(long lTime, smc::particle<cv_state> & pFrom, smc::rng *pRng) {
   cv_state * k = pFrom.GetValuePointer();
-
-//std::cout << "In IMU Kernel" << std::endl;
   
-  k->stateSpace(0) = k->stateSpace(0)+y_imu->deltaT*k->stateSpace(3)+ pRng->Normal(0,sqrt(9)); //x pose
-  k->stateSpace(1) = k->stateSpace(1)+y_imu->deltaT*k->stateSpace(4)+ pRng->Normal(0,sqrt(9));//y pose
-  k->stateSpace(2) = k->stateSpace(2)+y_imu->deltaT*k->stateSpace(5)+ pRng->Normal(0,sqrt(9));//z pose
-  k->stateSpace(3) = k->stateSpace(3)+pRng->Normal(0,sqrt(.5)); //x angular velocity
-  k->stateSpace(4) = k->stateSpace(4)+pRng->Normal(0,sqrt(.5)); //y angular velocity
-  k->stateSpace(5) = k->stateSpace(5)+pRng->Normal(0,sqrt(.5)); //z angular velocity
-  k->stateSpace(6) = k->stateSpace(6)+y_imu->deltaT*k->stateSpace(9)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(12)+pRng->Normal(0,sqrt(.0001)); //x position
-  k->stateSpace(7) = k->stateSpace(7)+y_imu->deltaT*k->stateSpace(10)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(13)+pRng->Normal(0,sqrt(.0001)); //y position
-  k->stateSpace(8) = k->stateSpace(8)+y_imu->deltaT*k->stateSpace(11)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(14)+pRng->Normal(0,sqrt(.0001)); //z position
-  k->stateSpace(9) = k->stateSpace(9)+y_imu->deltaT*k->stateSpace(12)+pRng->Normal(0,sqrt(.005)); //x velocity
-  k->stateSpace(10) = k->stateSpace(10)+y_imu->deltaT*k->stateSpace(13)+pRng->Normal(0,sqrt(.005)); //x velocity
-  k->stateSpace(11) = k->stateSpace(11)+y_imu->deltaT*k->stateSpace(14)+pRng->Normal(0,sqrt(.005)); //x velocity
-  k->stateSpace(12) = k->stateSpace(12)+pRng->Normal(0,sqrt(.005)); //x acc 
-  k->stateSpace(13) = k->stateSpace(13)+pRng->Normal(0,sqrt(.005)); //y acc 
-  k->stateSpace(14) = k->stateSpace(14)+pRng->Normal(0,sqrt(.005)); //z acc
-
-//std::cout <<  k->stateSpace << std::endl; 
+  // 运动学模型更新 - 姿态部分
+  k->stateSpace(0) = k->stateSpace(0)+y_imu->deltaT*k->stateSpace(3)+ pRng->Normal(0,sqrt(9)); // 姿态角X + 角速度*时间 + 噪声
+  k->stateSpace(1) = k->stateSpace(1)+y_imu->deltaT*k->stateSpace(4)+ pRng->Normal(0,sqrt(9)); // 姿态角Y
+  k->stateSpace(2) = k->stateSpace(2)+y_imu->deltaT*k->stateSpace(5)+ pRng->Normal(0,sqrt(9)); // 姿态角Z
   
+  // 角速度更新
+  k->stateSpace(3) = k->stateSpace(3)+pRng->Normal(0,sqrt(.5)); // 角速度X + 噪声
+  k->stateSpace(4) = k->stateSpace(4)+pRng->Normal(0,sqrt(.5)); // 角速度Y
+  k->stateSpace(5) = k->stateSpace(5)+pRng->Normal(0,sqrt(.5)); // 角速度Z
+  
+  // 位置更新 - 匀加速运动模型
+  k->stateSpace(6) = k->stateSpace(6)+y_imu->deltaT*k->stateSpace(9)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(12)+pRng->Normal(0,sqrt(.0001)); // 位置X = X + v*t + 1/2*a*t^2
+  k->stateSpace(7) = k->stateSpace(7)+y_imu->deltaT*k->stateSpace(10)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(13)+pRng->Normal(0,sqrt(.0001)); // 位置Y
+  k->stateSpace(8) = k->stateSpace(8)+y_imu->deltaT*k->stateSpace(11)+y_imu->deltaT*y_imu->deltaT*0.5*k->stateSpace(14)+pRng->Normal(0,sqrt(.0001)); // 位置Z
+  
+  // 速度更新 - 匀加速
+  k->stateSpace(9) = k->stateSpace(9)+y_imu->deltaT*k->stateSpace(12)+pRng->Normal(0,sqrt(.005));  // 速度X = v + a*t
+  k->stateSpace(10) = k->stateSpace(10)+y_imu->deltaT*k->stateSpace(13)+pRng->Normal(0,sqrt(.005)); // 速度Y 
+  k->stateSpace(11) = k->stateSpace(11)+y_imu->deltaT*k->stateSpace(14)+pRng->Normal(0,sqrt(.005)); // 速度Z
+  
+  // 加速度更新 - 随机游走
+  k->stateSpace(12) = k->stateSpace(12)+pRng->Normal(0,sqrt(.005)); // 加速度X
+  k->stateSpace(13) = k->stateSpace(13)+pRng->Normal(0,sqrt(.005)); // 加速度Y 
+  k->stateSpace(14) = k->stateSpace(14)+pRng->Normal(0,sqrt(.005)); // 加速度Z
+
+  // 根据似然计算更新粒子权重
   pFrom.AddToLogWeight(logLikelihoodIMU(*k, *y_imu));
 }
 //AddToLogWeight
