@@ -123,7 +123,7 @@ using namespace std;
    * 
    * @note 观测矩阵H的结构:
    *       - 前3行对应位置观测 (0-2,0-2)
-   *       - 中间3行对应速度观测 (3-5,0-2)
+   *       - 中间3行对应角速度观测 (3-5,0-2)
    *       - 最后3行对应加速度观测 (12-14,0-2)
    * 
    * @param 无输入参数
@@ -182,6 +182,8 @@ sensorH.set_size(9, 15);
    * - 3-5: 角速度 [wx, wy, wz]
    * - 6-8: 加速度 [ax, ay, az]
    */
+
+
    IMU_obs::IMU_obs(double poseError, double gyroError, double accError, double time) {
 
 	CovarianceMatrixR.set_size(9, 9);
@@ -217,7 +219,7 @@ sensorH.set_size(9, 15);
   /**
    * @brief 设置IMU测量数据并更新时间信息
    * 
-   * @param Theta 姿态角度向量 (roll角、pitch角、yaw角) [rad]
+   * @param Theta 姿态角度向量，欧拉角 (roll角、pitch角、yaw角) [rad]
    * @param Omega 角速度向量 (x轴、y轴、z轴) [rad/s]
    * @param Acc 加速度向量 (x轴、y轴、z轴) [m/s^2]
    * @param currentT 当前时间戳 [s]
@@ -364,6 +366,30 @@ smc::particle<cv_state> fInitialise(smc::rng *pRng)
   // 返回初始化的粒子,权重设为1/N
   return smc::particle<cv_state>(k, (1/N));
 }
+/**
+ * @brief 初始化粒子滤波器的状态变量
+ * @details 该函数根据IMU测量值和高斯噪声初始化粒子滤波器的15维状态空间
+ * 状态空间包含:
+ * - 姿态（x,y,z）
+ * - 角速度（x,y,z） 
+ * - 位置（x,y,z）
+ * - 速度（x,y,z）
+ * - 加速度（x,y,z）
+ * 
+ * @param pRng 随机数生成器指针,用于生成高斯噪声
+ * @return smc::particle<cv_state> 返回初始化的粒子,包含状态向量和权重(1/N)
+ * 
+ * @note 该函数使用IMU测量值初始化姿态和角速度,其他状态变量初始化为高斯噪声
+ * @note 高斯噪声的标准差为sqrt(0.1)
+ * @note N为粒子数量,用于计算初始权重
+ */
+
+// 状态空间初始化说明:
+// stateSpace(0-2): 使用IMU姿态测量值加噪声初始化
+// stateSpace(3-5): 使用IMU角速度测量值加噪声初始化  
+// stateSpace(6-8): 位置初始化为高斯噪声,均值为0
+// stateSpace(9-11): 速度初始化为高斯噪声,均值为0
+// stateSpace(12-14): 加速度初始化为高斯噪声,均值为0
 smc::particle<cv_state> fInitialise(smc::rng *pRng)
 {
   cv_state k;
@@ -390,6 +416,37 @@ smc::particle<cv_state> fInitialise(smc::rng *pRng)
   return smc::particle<cv_state>(k, (1/N));
 }
 
+/**
+ * @brief GPS测量更新步骤的核函数，用于粒子滤波中的状态预测
+ * @details 该函数实现了基于GPS测量的状态转移模型，包括位姿、速度和加速度的更新
+ * 
+ * @param lTime 当前时间戳
+ * @param pFrom 需要更新的粒子，包含15维状态向量
+ * @param pRng 随机数生成器指针，用于添加过程噪声
+ * 
+ * @note 状态向量包含：
+ * - 0-2: 姿态角(roll, pitch, yaw)
+ * - 3-5: 角速度(wx, wy, wz)
+ * - 6-8: 位置(x, y, z)
+ * - 9-11: 速度(vx, vy, vz)
+ * - 12-14: 加速度(ax, ay, az)
+ * 
+ * @note 关键参数：
+ * - deltaT: GPS采样时间间隔
+ * - 姿态噪声方差: 0.001
+ * - 角速度噪声方差: 0.001
+ * - 位置噪声方差: 25
+ * - 速度噪声方差: 4
+ * - 加速度噪声方差: 0.001
+ * 
+ * @note 更新步骤：
+ * 1. 基于运动学模型更新姿态
+ * 2. 更新角速度（添加随机扰动）
+ * 3. 使用二阶运动学模型更新位置（考虑速度和加速度）
+ * 4. 使用一阶运动学模型更新速度
+ * 5. 更新加速度（添加随机扰动）
+ * 6. 计算并更新粒子权重
+ */
 void GPSKernel(long lTime, smc::particle<cv_state> & pFrom, smc::rng *pRng) {//movements for GPS measurements
   cv_state * k = pFrom.GetValuePointer();
 
