@@ -7,6 +7,17 @@
 
 using namespace std;
 
+  /**
+   * @brief cv_state类的默认构造函数
+   * @details 初始化状态空间向量，设置其维度为15并将所有元素初始化为0
+   *          状态向量包含:
+   *          - 位置 (3维)
+   *          - 速度 (3维)
+   *          - 姿态四元数 (4维)
+   *          - 陀螺仪零偏 (3维)
+   *          - 加速度计零偏 (2维)
+   * @note 此构造函数用于创建一个新的cv_state对象实例，为后续的状态估计做准备
+   */
   cv_state::cv_state() {
 
 	stateSpace.set_size(15);
@@ -14,6 +25,31 @@ using namespace std;
     
   }
 
+  /**
+   * @brief GPS观测器类的构造函数，用于初始化GPS相关的矩阵和时间参数
+   * @details 初始化包括：
+   *          - 观测噪声协方差矩阵 R (6x6)
+   *          - GPS测量值向量 (6x1)
+   *          - 观测矩阵 H (6x15)
+   * @param time 当前时间戳
+   * 
+   * @note 观测矩阵H的结构:
+   * - H(0,6) = 1  对应位置x
+   * - H(1,7) = 1  对应位置y
+   * - H(2,8) = 1  对应位置z
+   * - H(3,9) = 1  对应速度vx
+   * - H(4,10) = 1 对应速度vy
+   * - H(5,11) = 1 对应速度vz
+   * 
+   * @warning 使用前需确保time参数的单位统一性
+   * 
+   * @see 状态向量定义：
+   * - [0-2]: 姿态角
+   * - [3-5]: 姿态角速度
+   * - [6-8]: 位置
+   * - [9-11]: 速度
+   * - [12-14]: 加速度偏差
+   */
   GPS_obs::GPS_obs(double time) {
 	CovarianceMatrixR.set_size(6, 6);
 	measurementGPS.set_size(6);
@@ -32,6 +68,28 @@ using namespace std;
     deltaT = 0;
   }
 
+  /**
+   * @brief 设置GPS观测数据和相关参数
+   * @details 该函数用于更新GPS观测数据，包括位置、速度和对应的误差协方差
+   * 
+   * @param Pos [输入] 3维位置向量 (x,y,z)
+   * @param Velocity [输入] 3维速度向量 (vx,vy,vz)
+   * @param Xerror [输入] X方向位置测量误差
+   * @param Yerror [输入] Y方向位置测量误差
+   * @param Zerror [输入] Z方向位置测量误差
+   * @param Verror [输入] 速度测量误差（适用于所有方向）
+   * @param Cerror [输入] 时钟误差
+   * @param currentT [输入] 当前时间戳
+   * 
+   * @note 状态变量说明：
+   * - CovarianceMatrixR: 观测噪声协方差矩阵(6x6)
+   * - measurementGPS: GPS测量值向量(6x1)，包含位置和速度
+   * - lastTime: 上一次测量时间
+   * - currentTime: 当前测量时间
+   * - deltaT: 时间间隔
+   * 
+   * @warning 确保输入向量Pos和Velocity维度为3，否则可能导致越界访问
+   */
   void GPS_obs::SetMeasurement (arma::vec Pos, arma::vec Velocity, double Xerror, double Yerror, double Zerror, double Verror, double Cerror, double currentT) {
     CovarianceMatrixR.at(0,0) = Xerror*Xerror;
     CovarianceMatrixR.at(1,1) = Yerror*Yerror;
