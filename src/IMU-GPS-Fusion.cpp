@@ -113,6 +113,28 @@ using namespace std;
   }
 
 
+  /**
+   * @brief IMU观测类的构造函数
+   * @details 初始化IMU观测相关的矩阵和时间参数
+   *          - 初始化9x9的测量噪声协方差矩阵R
+   *          - 初始化9维的IMU测量向量
+   *          - 初始化9x15的观测矩阵H
+   *          - 设置时间相关参数
+   * 
+   * @note 观测矩阵H的结构:
+   *       - 前3行对应位置观测 (0-2,0-2)
+   *       - 中间3行对应速度观测 (3-5,0-2)
+   *       - 最后3行对应加速度观测 (12-14,0-2)
+   * 
+   * @param 无输入参数
+   * 
+   * @member CovarianceMatrixR - 测量噪声协方差矩阵 (9x9)
+   * @member measurementIMU    - IMU测量向量 (9x1)
+   * @member sensorH          - 观测矩阵 (9x15)
+   * @member lastTime         - 上一次测量时间戳
+   * @member currentTime      - 当前测量时间戳
+   * @member deltaT          - 时间增量
+   */
    IMU_obs::IMU_obs() {
 
 CovarianceMatrixR.set_size(9, 9);
@@ -136,6 +158,30 @@ sensorH.set_size(9, 15);
     deltaT = 0;
      
    }
+  /**
+   * @brief IMU观测类的构造函数，初始化IMU相关的观测矩阵和协方差矩阵
+   * 
+   * @param poseError 姿态测量误差标准差
+   * @param gyroError 陀螺仪测量误差标准差
+   * @param accError  加速度计测量误差标准差
+   * @param time      初始时间戳
+   * 
+   * @details 该构造函数主要完成以下工作:
+   * 1. 初始化9x9的观测噪声协方差矩阵R
+   * 2. 初始化9维的IMU测量向量
+   * 3. 初始化9x15的观测矩阵H
+   * 4. 设置观测矩阵H的映射关系:
+   *    - 0-2行对应位置状态
+   *    - 3-5行对应角速度状态
+   *    - 6-8行对应加速度状态
+   * 5. 设置协方差矩阵R的对角元素
+   * 6. 初始化时间相关变量
+   * 
+   * @note 观测向量的9个分量分别为:
+   * - 0-2: 位置 [x, y, z]
+   * - 3-5: 角速度 [wx, wy, wz]
+   * - 6-8: 加速度 [ax, ay, az]
+   */
    IMU_obs::IMU_obs(double poseError, double gyroError, double accError, double time) {
 
 	CovarianceMatrixR.set_size(9, 9);
@@ -168,6 +214,27 @@ sensorH.set_size(9, 15);
      
    }
 
+  /**
+   * @brief 设置IMU测量数据并更新时间信息
+   * 
+   * @param Theta 姿态角度向量 (roll角、pitch角、yaw角) [rad]
+   * @param Omega 角速度向量 (x轴、y轴、z轴) [rad/s]
+   * @param Acc 加速度向量 (x轴、y轴、z轴) [m/s^2]
+   * @param currentT 当前时间戳 [s]
+   * 
+   * @details 该函数用于:
+   * 1. 更新IMU测量数据到measurementIMU向量中
+   *    - measurementIMU[0-2]: 姿态角度
+   *    - measurementIMU[3-5]: 角速度
+   *    - measurementIMU[6-8]: 加速度
+   * 2. 更新时间信息
+   *    - 保存上一时刻时间
+   *    - 更新当前时间
+   *    - 计算时间增量deltaT
+   * 
+   * @note measurementIMU是一个9维向量，按顺序存储了IMU的所有测量量
+   * @note deltaT用于后续状态预测和卡尔曼滤波更新
+   */
    void IMU_obs::SetMeasurement (arma::vec Theta,  arma::vec Omega, arma::vec Acc, double currentT) {
      
          
