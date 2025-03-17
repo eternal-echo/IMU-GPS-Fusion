@@ -3,7 +3,7 @@ Sensor fusion using a particle filter based off of "Particle Filter Data Fusion 
 
 The particle filter is implemented using the SMCTC library. https://warwick.ac.uk/fac/sci/statistics/staff/academic-research/johansen/smctc/
 
-正在收集工作区信息# 这个IMU-GPS融合粒子滤波器的工作原理 hello world
+正在收集工作区信息# 这个IMU-GPS融合粒子滤波器的工作原理
 
 这个代码实现了一个基于粒子滤波的IMU和GPS传感器融合系统。我来解释一下数据流和整个系统的工作原理：
 
