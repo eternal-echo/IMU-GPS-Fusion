@@ -1,4 +1,4 @@
-cppsrc = $(wildcard ./*.cpp) $(wildcard ../include/*.cpp) $(wildcard ../BNO055-Linux-Library/I2C/src/*.cpp) $(wildcard ../BNO055-Linux-Library/src/*.cpp) $(wildcard ../Coordinate-Transforms/src/*.cpp)
+cppsrc = $(wildcard ./*.cpp) $(wildcard ../include/*.cpp) $(wildcard ../Coordinate-Transforms/src/*.cpp)
 obj = $(cppsrc:.cpp=.o)
 dep = $(obj:.o=.d)  # one dependency file for each source
 

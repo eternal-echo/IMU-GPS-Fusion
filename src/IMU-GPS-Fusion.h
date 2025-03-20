@@ -1,7 +1,6 @@
 #include "../include/smctc.h"
 #include <armadillo>
 #include "../Coordinate-Transforms/src/CoordinateTransform.h"
-#include "../BNO055-Linux-Library/src/BNO055.h"
 
 #define N 4096
 
