@@ -7,6 +7,32 @@ The particle filter is implemented using the SMCTC library. https://warwick.ac.u
 
 这个代码实现了一个基于粒子滤波的IMU和GPS传感器融合系统。我来解释一下数据流和整个系统的工作原理：
 
+# 环境搭建
+Ubuntu下。
+
+初始化 Git 子模块
+```
+git clone https://github.com/eternal-echo/IMU-GPS-Fusion.git
+cd IMU-GPS-Fusion
+git submodule init
+git submodule update
+```
+
+安装 依赖库
+
+```
+sudo apt-get update
+sudo apt-get install libgsl-dev
+sudo apt-get install libarmadillo-dev gpsd libgps-dev
+```
+
+进入src目录
+
+```
+cd src
+make
+```
+
 ## 基本原理
 
 粒子滤波是一种贝叶斯滤波方法，通过维护一组带权重的样本(粒子)来估计状态分布。这个系统融合了IMU(惯性测量单元)和GPS两种传感器数据来估计机器人/车辆的位置、速度、姿态等状态。
