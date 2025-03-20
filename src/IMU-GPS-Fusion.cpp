@@ -366,55 +366,6 @@ smc::particle<cv_state> fInitialise(smc::rng *pRng)
   // 返回初始化的粒子,权重设为1/N
   return smc::particle<cv_state>(k, (1/N));
 }
-/**
- * @brief 初始化粒子滤波器的状态变量
- * @details 该函数根据IMU测量值和高斯噪声初始化粒子滤波器的15维状态空间
- * 状态空间包含:
- * - 姿态（x,y,z）
- * - 角速度（x,y,z） 
- * - 位置（x,y,z）
- * - 速度（x,y,z）
- * - 加速度（x,y,z）
- * 
- * @param pRng 随机数生成器指针,用于生成高斯噪声
- * @return smc::particle<cv_state> 返回初始化的粒子,包含状态向量和权重(1/N)
- * 
- * @note 该函数使用IMU测量值初始化姿态和角速度,其他状态变量初始化为高斯噪声
- * @note 高斯噪声的标准差为sqrt(0.1)
- * @note N为粒子数量,用于计算初始权重
- */
-
-// 状态空间初始化说明:
-// stateSpace(0-2): 使用IMU姿态测量值加噪声初始化
-// stateSpace(3-5): 使用IMU角速度测量值加噪声初始化  
-// stateSpace(6-8): 位置初始化为高斯噪声,均值为0
-// stateSpace(9-11): 速度初始化为高斯噪声,均值为0
-// stateSpace(12-14): 加速度初始化为高斯噪声,均值为0
-smc::particle<cv_state> fInitialise(smc::rng *pRng)
-{
-  cv_state k;
-  
-  k.stateSpace(0) = pRng->Normal(y_imu->measurementIMU.at(0),sqrt(.1)); //x pose
-  k.stateSpace(1) = pRng->Normal(y_imu->measurementIMU.at(1),sqrt(.1));//y pose
-  k.stateSpace(2) = pRng->Normal( y_imu->measurementIMU.at(2),sqrt(.1));//z pose
-  k.stateSpace(3) = pRng->Normal( y_imu->measurementIMU.at(3),sqrt(.1)); //x angular velocity
-  k.stateSpace(4) = pRng->Normal( y_imu->measurementIMU.at(4),sqrt(.1)); //y angular velocity
-  k.stateSpace(5) = pRng->Normal( y_imu->measurementIMU.at(5),sqrt(.1)); //z angular velocity
-  k.stateSpace(6) = pRng->Normal(0,sqrt(.1)); //x position
-  k.stateSpace(7) = pRng->Normal(0,sqrt(.1)); //y position
-  k.stateSpace(8) = pRng->Normal(0,sqrt(.1)); //z position
-  k.stateSpace(9) = pRng->Normal(0,sqrt(.1)); //x velocity
-  k.stateSpace(10) = pRng->Normal(0,sqrt(.1)); //x velocity
-  k.stateSpace(11) = pRng->Normal(0,sqrt(.1)); //x velocity
-  k.stateSpace(12) = pRng->Normal(0,sqrt(.1)); //x accerleration
-  k.stateSpace(13) = pRng->Normal(0,sqrt(.1)); //y accerleration
-  k.stateSpace(14) = pRng->Normal(0,sqrt(.1)); //z accerleration
-
-// std::cout <<  k.stateSpace << std::endl;
-//std::cout <<  exp(1/N) << std::endl;
-
-  return smc::particle<cv_state>(k, (1/N));
-}
 
 /**
  * @brief GPS测量更新步骤的核函数，用于粒子滤波中的状态预测
