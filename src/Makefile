@@ -6,7 +6,8 @@ CPPFLAGS = -Wall -std=c++14 -pedantic -fpermissive
 
 LDFLAGS = -lgsl -lgslcblas -opf -larmadillo -lgps
 
-test.exe: $(obj)
+TARGET = test.exe
+$(TARGET): $(obj)
 	$(CXX) -o $(CFLAGS) $@ $^ $(LDFLAGS)
 
 -include $(dep)   # include all dep files in the makefile
