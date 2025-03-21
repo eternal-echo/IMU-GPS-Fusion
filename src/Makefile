@@ -1,26 +1,35 @@
+# 源文件
 cppsrc = $(wildcard ./*.cpp) $(wildcard ../include/*.cpp) $(wildcard ../Coordinate-Transforms/src/*.cpp)
 obj = $(cppsrc:.cpp=.o)
-dep = $(obj:.o=.d)  # one dependency file for each source
+dep = $(obj:.o=.d)
 
-CPPFLAGS = -Wall -std=c++14 -pedantic -fpermissive
+# 编译器和标志
+CXX = g++
+CXXFLAGS = -Wall -std=c++14 -pedantic -fpermissive
+CPPFLAGS = -I../include -I../data/kitti
 
-LDFLAGS = -lgsl -lgslcblas -opf -larmadillo -lgps
+# 链接库标志（移除了错误的 -opf）
+LDFLAGS = -lgsl -lgslcblas -larmadillo -lgps
 
+# 目标文件
 TARGET = test.exe
+
+# 默认目标
+all: $(TARGET)
+
 $(TARGET): $(obj)
-	$(CXX) -o $(CFLAGS) $@ $^ $(LDFLAGS)
+    $(CXX) -o $(CFLAGS) $@ $^ $(LDFLAGS)
 
--include $(dep)   # include all dep files in the makefile
+# 编译规则
+%.o: %.cpp
+    $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-# rule to generate a dep file by using the C preprocessor
-# (see man cpp for details on the -MM and -MT options)
+# 依赖文件生成
 %.d: %.cpp
-	@$(CPP) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+    @$(CXX) $(CXXFLAGS) $(CPPFLAGS) $< -MM -MT $(@:.d=.o) >$@
 
-.PHONY: clean
+-include $(dep)
+
+.PHONY: clean all
 clean:
-	rm -f $(obj) test
-
-.PHONY: cleandep
-cleandep:
-	rm -f $(dep)
+    rm -f $(obj) $(TARGET) $(dep)
