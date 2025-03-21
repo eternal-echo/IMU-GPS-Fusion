@@ -18,18 +18,18 @@ TARGET = test.exe
 all: $(TARGET)
 
 $(TARGET): $(obj)
-    $(CXX) -o $(CFLAGS) $@ $^ $(LDFLAGS)
+	$(CXX) -o $(CFLAGS) $@ $^ $(LDFLAGS)
 
 # 编译规则
 %.o: %.cpp
-    $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # 依赖文件生成
 %.d: %.cpp
-    @$(CXX) $(CXXFLAGS) $(CPPFLAGS) $< -MM -MT $(@:.d=.o) >$@
+	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) $< -MM -MT $(@:.d=.o) >$@
 
 -include $(dep)
 
 .PHONY: clean all
 clean:
-    rm -f $(obj) $(TARGET) $(dep)
+	rm -f $(obj) $(TARGET) $(dep)
