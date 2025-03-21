@@ -8,30 +8,50 @@ class KittiDataReader {
 public:
     KittiDataReader(const std::string& base_path) {
          // 直接打开测试数据文件
-         data_file_.open(/home/hikari/IMU-GPS-Fusion/data/test/10datatest.txt);
-         if (!data_file_.is_open()) {
-             throw std::runtime_error("Failed to open test data file: " + mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/10datatest.exe);
-         }
-         frame_count_ = 0;
-     }
- 
-     ~KittiDataReader() {
-         if (data_file_.is_open()) {
-             data_file_.close();
-         }
-        //imu_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/data/0000000000.txt);//KITTI的IMU数据文件
-        // KITTI的时间戳文件
-        //timestamp_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/timestamps.txt);
+         data_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/10datatest.exe);
+         // KITTI的时间戳文件
+        timestamp_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/timestamps.txt);
+        if (!data_file_.is_open()) {
+            throw std::runtime_error("Failed to open data file");
+        }
+        if (!timestamp_file_.is_open()) {
+            throw std::runtime_error("Failed to open timestamp file");
+        }
+        frame_count_ = 0;
     }
+ 
+    ~KittiDataReader() {
+        if (data_file_.is_open()) {
+            data_file_.close();
+        }
+        if (timestamp_file_.is_open()) {
+            timestamp_file_.close();
+        }
+    }
+        //imu_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/data/0000000000.txt);//KITTI的IMU数据文件
+        
 
     bool readNextFrame(double& timestamp, arma::vec& imu_data, arma::vec& gps_data) {
-        std::string line;
-        if (!std::getline(data_file_, line)) {
-            return false;  // 文件结束
+        std::string data_line, timestamp_line;
+        
+        // 读取时间戳和数据
+        if (!std::getline(timestamp_file_, timestamp_line) || 
+            !std::getline(data_file_, data_line)) {
+            return false;
         }
+
+        // 解析时间戳（KITTI格式：2011-09-26 13:02:44.000000000）
+        struct tm tm = {};
+        char ns[10];
+        sscanf(timestamp_line.c_str(), "%d-%d-%d %d:%d:%d.%s", 
+               &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+               &tm.tm_hour, &tm.tm_min, &tm.tm_sec, ns);
+        
+        timestamp = mktime(&tm);
 
         // 解析一行数据
         std::stringstream ss(line);
+
         std::vector<double> values;
         double val;
         while (ss >> val) {
@@ -41,6 +61,7 @@ public:
         if (values.size() < 20) {  // 确保数据完整性
             return false;
         }
+
     //bool readNextFrame(double& timestamp, arma::vec& imu_data, arma::vec& gps_data) {
         //std::string line, timestamp_line;
         
@@ -98,6 +119,7 @@ public:
 
 private:
     std::ifstream data_file_;
+    std::ifstream timestamp_file_;
     int frame_count_;
     //std::ifstream imu_file_;
     //std::ifstream timestamp_file_;

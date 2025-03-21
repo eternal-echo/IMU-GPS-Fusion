@@ -58,8 +58,7 @@ double integrand_var_x(const cv_state&, void*);
  */
 double integrand_var_y(const cv_state&, void*);
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv){
     /**
      * @brief 初始化时间戳和传感器对象
      * @details 创建并配置GPS和IMU观测对象，设置相关参数和初始时间戳
@@ -122,26 +121,20 @@ int main(int argc, char** argv)
             
             // 处理数据
             y_imu->newData = 1;
-            y_imu->SetMeasurement(
-                arma::vec({imu_data(0), imu_data(1), imu_data(2)}),  // Theta
-                arma::vec({imu_data(3), imu_data(4), imu_data(5)}),  // Omega
-                arma::vec({imu_data(6), imu_data(7), imu_data(8)}),  // Acc
-                timestamp
-            );
+            arma::vec Theta = {imu_data(0), imu_data(1), imu_data(2)}; 
+            arma::vec Omega = {imu_data(3), imu_data(4), imu_data(5)}; 
+            arma::vec Acc = {imu_data(6), imu_data(7), imu_data(8)};
+            y_imu->SetMeasurement(Theta, Omega, Acc, timestamp);
 
             y_gps->newData = 1;
+            arma::vec Pos = {gps_data(0), gps_data(1), gps_data(2)};
+            arma::vec Velocity = {gps_data(3), gps_data(4), gps_data(5)};
             double xerror = 5.0;  // 经度误差
             double yerror = 5.0;  // 纬度误差
             double zerror = 10.0; // 高度误差
             double serror = 1.0;  // 速度误差
             double cerror = 1.0;  // 垂直速度误差
-            y_gps->SetMeasurement(
-                arma::vec({gps_data(0), gps_data(1), gps_data(2)}),  // Position
-                arma::vec({gps_data(3), gps_data(4), gps_data(5)}),  // Velocity
-                xerror, yerror, zerror,   // 位置误差
-                serror, cerror,        // 速度误差
-                timestamp
-            );
+            y_gps->SetMeasurement(Pos, Velocity, xerror, yerror, zerror, serror, cerror, timestamp);
     /**
 
     // 打印调试信息
@@ -226,6 +219,7 @@ int main(int argc, char** argv)
             usleep(10000);  // 10毫秒
         }
     }
+}
     catch(smc::exception e) {
         cerr << e;
         exit(e.lCode);
