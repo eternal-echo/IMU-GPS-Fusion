@@ -8,9 +8,9 @@ class KittiDataReader {
 public:
     KittiDataReader(const std::string& base_path) {
          // 直接打开测试数据文件
-         data_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/10datatest.exe);
+         data_file_.open("/mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/10datatest.txt");
          // KITTI的时间戳文件
-        timestamp_file_.open(mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/timestamps.txt);
+        timestamp_file_.open("/mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync/oxts/timestamps.txt");
         if (!data_file_.is_open()) {
             throw std::runtime_error("Failed to open data file");
         }
