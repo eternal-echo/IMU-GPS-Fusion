@@ -89,9 +89,6 @@ int main(int argc, char** argv){
     }
     printf("%lld milliseconds since epoch\n", timestamp_msec);
 
-    // 指定测试数据文件路径
-    std::string test_file = "/mnt/c/Users/Lenovo/Documents/GitHub/10datatest.txt";
-    KittiDataReader reader(test_file);
         
     // 初始化传感器观测对象
     // GPS观测对象：输入参数为初始时间(秒)
@@ -124,9 +121,6 @@ int main(int argc, char** argv){
         KittiDataReader reader(sequence_path);
         std::cout << "Total frames: " << reader.getTotalFrames() << std::endl;
 
-        // 读取并处理每一帧数据
-        double timestamp;
-        arma::vec imu_data, gps_data;
         int frame_count = 0;
         
         while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
