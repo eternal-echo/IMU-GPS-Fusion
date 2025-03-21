@@ -80,50 +80,18 @@ int main(int argc, char** argv)
     }
     printf("%lld milliseconds since epoch\n", timestamp_msec);
 
+    // 指定测试数据文件路径
+    std::string test_file = "/mnt/c/Users/Lenovo/Documents/GitHub/10datatest.txt";
+    KittiDataReader reader(test_file);
+        
     // 初始化传感器观测对象
     // GPS观测对象：输入参数为初始时间(秒)
-    //y_gps = new GPS_obs(timestamp_msec/1000);
+    y_gps = new GPS_obs(timestamp_msec/1000);
 
     // IMU观测对象：输入参数为姿态角方差(3)、角速度方差(5)、加速度方差(7)和初始时间(秒)
     // 这些方差参数用于传感器融合时的权重计算
-    //y_imu = new IMU_obs(3, 5, 7, (timestamp_msec/1000.0)); 
+    y_imu = new IMU_obs(3, 5, 7, (timestamp_msec/1000.0)); 
 
-        // 指定测试数据文件路径
-        std::string test_file = "/mnt/c/Users/Lenovo/Documents/GitHub/10datatest.txt";
-        KittiDataReader reader(test_file);
-        
-        double timestamp;
-        arma::vec imu_data, gps_data;
-        
-        // 读取并处理每一帧数据
-        while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
-            if (!y_imu || !y_gps) {
-                std::cerr << "Invalid sensor objects" << std::endl;
-                return 1;
-            std::cout << "Processing frame " << reader.getFrameCount() 
-                     << " of 10" << std::endl;
-            
-            // 处理数据
-            y_imu->newData = 1;
-            y_imu->SetMeasurement(
-                arma::vec({imu_data(0), imu_data(1), imu_data(2)}),  // Theta
-                arma::vec({imu_data(3), imu_data(4), imu_data(5)}),  // Omega
-                arma::vec({imu_data(6), imu_data(7), imu_data(8)}),  // Acc
-                timestamp
-            );
-
-            y_gps->newData = 1;
-            y_gps->SetMeasurement(
-                arma::vec({gps_data(0), gps_data(1), gps_data(2)}),  // Position
-                arma::vec({gps_data(3), gps_data(4), gps_data(5)}),  // Velocity
-                5.0, 5.0, 10.0,  // 位置误差
-                1.0, 1.0,        // 速度误差
-                timestamp
-            );
-    /**
-     * @brief 初始化坐标转换系统
-     * @details 创建坐标转换对象并设置初始参数
-     */
     // 创建坐标转换工具对象
     CoordinateTransform transform;
     // 定义存储地理坐标的结构体(经度、纬度、高度)
@@ -139,51 +107,42 @@ int main(int argc, char** argv)
     coordinates.third = 10.0;     // 高度
     transform.set_initialGeodetic(coordinates);
 
+    try{
+        double timestamp;
+        arma::vec imu_data, gps_data;
+        
+        // 读取并处理每一帧数据
+        while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
+            if (!y_imu || !y_gps) {
+                std::cerr << "Invalid sensor objects" << std::endl;
+                return 1;
+            }
+            std::cout << "Processing frame " << reader.getFrameCount() 
+                     << " of 10" << std::endl;
+            
+            // 处理数据
+            y_imu->newData = 1;
+            y_imu->SetMeasurement(
+                arma::vec({imu_data(0), imu_data(1), imu_data(2)}),  // Theta
+                arma::vec({imu_data(3), imu_data(4), imu_data(5)}),  // Omega
+                arma::vec({imu_data(6), imu_data(7), imu_data(8)}),  // Acc
+                timestamp
+            );
+
+            y_gps->newData = 1;
+            double xerror = 5.0;  // 经度误差
+            double yerror = 5.0;  // 纬度误差
+            double zerror = 10.0; // 高度误差
+            double serror = 1.0;  // 速度误差
+            double cerror = 1.0;  // 垂直速度误差
+            y_gps->SetMeasurement(
+                arma::vec({gps_data(0), gps_data(1), gps_data(2)}),  // Position
+                arma::vec({gps_data(3), gps_data(4), gps_data(5)}),  // Velocity
+                xerror, yerror, zerror,   // 位置误差
+                serror, cerror,        // 速度误差
+                timestamp
+            );
     /**
-     * @brief 设置模拟的IMU数据
-     * @details 使用预设的固定值替代实际传感器读取的数据
-     */
-    y_imu->newData = 1;  // 设置数据更新标志
-
-    // 设置预设的姿态角数据（横滚、俯仰、偏航，单位：度）
-    arma::vec Theta = { 0.0, 0.0, 45.0 };        
-
-    // 设置预设的角速度数据（绕x、y、z轴，单位：度/秒）
-    arma::vec Omega = { 0.1, 0.2, 0.3 };  
-
-    // 设置预设的加速度数据（x、y、z方向，单位：m/s^2，已减去重力加速度）
-    arma::vec Acc = { 0.05, 0.1, 0.0 };  
-
-    // 更新IMU测量数据
-    y_imu->SetMeasurement(Theta, Omega, Acc, (timestamp_msec/1000.0));
-
-    /**
-     * @brief 设置模拟的GPS数据
-     * @details 使用预设的固定值替代实际GPS接收机数据
-     */
-    y_gps->newData = 1;  // 设置数据更新标志
-
-    // 将模拟的地理坐标转换为NED坐标系
-    FrameCoordinates NED = transform.Geodetic_to_NED(coordinates);
-
-    // 设置预设的位置数据（北、东、下，单位：米）
-    arma::vec Pos = { NED.first, NED.second, NED.third };
-
-    // 设置预设的速度数据（北、东、下方向，单位：m/s）
-    double heading = 45.0;  // 航向角（度）
-    double speed = 1.2;     // 水平速度（m/s）
-    double climb = 0.0;     // 垂直速度（m/s）
-    arma::vec Velocity = { cos(heading*M_PI/180.0)*speed, sin(heading*M_PI/180.0)*speed, climb };
-
-    // 设置预设的误差参数
-    double xerror = 5.0;  // 经度误差
-    double yerror = 5.0;  // 纬度误差
-    double zerror = 10.0; // 高度误差
-    double serror = 1.0;  // 速度误差
-    double cerror = 1.0;  // 垂直速度误差
-
-    // 更新GPS观测数据
-    y_gps->SetMeasurement(Pos, Velocity, xerror, yerror, zerror, serror, cerror, (timestamp_msec/1000));
 
     // 打印调试信息
     std::cout << "Initial GPS data:" << std::endl;
@@ -194,7 +153,6 @@ int main(int argc, char** argv)
      * @brief 粒子滤波器初始化与迭代计算
      * @details 设置并运行粒子滤波器，融合IMU和GPS数据进行状态估计
      */
-    try {
         // 定义状态转移核函数数组(IMU核函数和GPS核函数)
         void (*pfMoves[])(long, smc::particle<cv_state> &,smc::rng*) = {IMUKernel, GPSKernel};
 
