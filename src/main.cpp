@@ -9,7 +9,8 @@
 #include <sstream>
 #include <math.h>
 #include <time.h> 
-#include <sys/timeb.h>  
+#include <sys/timeb.h>
+#include "../data/kitti/KITTI_dataset.h" 
 
 using namespace std;
 
@@ -81,12 +82,44 @@ int main(int argc, char** argv)
 
     // 初始化传感器观测对象
     // GPS观测对象：输入参数为初始时间(秒)
-    y_gps = new GPS_obs(timestamp_msec/1000);
+    //y_gps = new GPS_obs(timestamp_msec/1000);
 
     // IMU观测对象：输入参数为姿态角方差(3)、角速度方差(5)、加速度方差(7)和初始时间(秒)
     // 这些方差参数用于传感器融合时的权重计算
-    y_imu = new IMU_obs(3, 5, 7, (timestamp_msec/1000.0)); 
+    //y_imu = new IMU_obs(3, 5, 7, (timestamp_msec/1000.0)); 
 
+        // 指定测试数据文件路径
+        std::string test_file = "/mnt/c/Users/Lenovo/Documents/GitHub/10datatest.txt";
+        KittiDataReader reader(test_file);
+        
+        double timestamp;
+        arma::vec imu_data, gps_data;
+        
+        // 读取并处理每一帧数据
+        while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
+            if (!y_imu || !y_gps) {
+                std::cerr << "Invalid sensor objects" << std::endl;
+                return 1;
+            std::cout << "Processing frame " << reader.getFrameCount() 
+                     << " of 10" << std::endl;
+            
+            // 处理数据
+            y_imu->newData = 1;
+            y_imu->SetMeasurement(
+                arma::vec({imu_data(0), imu_data(1), imu_data(2)}),  // Theta
+                arma::vec({imu_data(3), imu_data(4), imu_data(5)}),  // Omega
+                arma::vec({imu_data(6), imu_data(7), imu_data(8)}),  // Acc
+                timestamp
+            );
+
+            y_gps->newData = 1;
+            y_gps->SetMeasurement(
+                arma::vec({gps_data(0), gps_data(1), gps_data(2)}),  // Position
+                arma::vec({gps_data(3), gps_data(4), gps_data(5)}),  // Velocity
+                5.0, 5.0, 10.0,  // 位置误差
+                1.0, 1.0,        // 速度误差
+                timestamp
+            );
     /**
      * @brief 初始化坐标转换系统
      * @details 创建坐标转换对象并设置初始参数
