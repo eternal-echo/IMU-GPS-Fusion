@@ -67,6 +67,8 @@ int main(int argc, char** argv){
     std::ofstream error_file("../results/error.dat");
     trajectory_file << "# X_Mean Y_Mean GPS_X GPS_Y\n";
     error_file << "# Iteration X_StdDev Y_StdDev\n";
+    // 指定KITTI数据集序列路径
+    std::string sequence_path = "/mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync";
     /**
      * @brief 初始化时间戳和传感器对象
      * @details 创建并配置GPS和IMU观测对象，设置相关参数和初始时间戳
@@ -118,14 +120,18 @@ int main(int argc, char** argv){
         double timestamp;
         arma::vec imu_data, gps_data;
         
+        // 初始化数据读取器
+        KittiDataReader reader(sequence_path);
+        std::cout << "Total frames: " << reader.getTotalFrames() << std::endl;
+
         // 读取并处理每一帧数据
+        double timestamp;
+        arma::vec imu_data, gps_data;
+        int frame_count = 0;
+        
         while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
-            if (!y_imu || !y_gps) {
-                std::cerr << "Invalid sensor objects" << std::endl;
-                return 1;
-            }
-            std::cout << "Processing frame " << reader.getFrameCount() 
-                     << " of 10" << std::endl;
+            std::cout << "Processing frame " << ++frame_count 
+                     << " of " << reader.getTotalFrames() << "\r" << std::flush;
             
             // 处理数据
             y_imu->newData = 1;
@@ -230,11 +236,12 @@ int main(int argc, char** argv){
                 
             
             // 保存轨迹数据
-            trajectory_file << xm << " " << ym << " " 
+            trajectory_file << std::setprecision(10) << xm << " " << ym << " " 
             << Pos(0) << " " << Pos(1) << "\n";
 
             // 保存误差数据
-            error_file << n << " " << sqrt(xv) << " " << sqrt(yv) << "\n";
+            error_file << std::setprecision(6) << n << " " << sqrt(xv) << " " << sqrt(yv) << " " << timestamp << "\n";
+            std::cout << "\nProcessing complete!" << std::endl;
 
             // 短暂延时，模拟实际系统的循环时间
             usleep(10000);  // 10毫秒
@@ -243,23 +250,40 @@ int main(int argc, char** argv){
         error_file.close(); 
 
         std::ofstream plot_script("../results/plot_commands.gp");
-        plot_script << "set terminal png size 1200,800\n"
-                    << "set output '../results/particle_filter_results.png'\n"
-                    << "set multiplot layout 2,1\n"
-                    << "set title 'Particle Filter Trajectory'\n"
-                    << "plot '../results/trajectory.dat' using 1:2 with lines title 'Estimated Path', \\\n"
-                    << "     '../results/trajectory.dat' using 3:4 with points pt 7 title 'GPS Measurements'\n"
-                    << "set title 'Position Uncertainty'\n"
-                    << "plot '../results/error.dat' using 1:2 with lines title 'X StdDev', \\\n"
-                    << "     '../results/error.dat' using 1:3 with lines title 'Y StdDev'\n"
-                    << "unset multiplot\n";
+        plot_script << "set terminal png size 1600,1200 enhanced font 'Arial,12'\n"
+                   << "set output '../results/particle_filter_results.png'\n"
+                   << "set multiplot layout 2,1 spacing 0.15\n"
+                   << "set size 1,0.6\n"
+                   << "set origin 0,0.4\n"
+                   << "set title 'Particle Filter Trajectory' font 'Arial,14'\n"
+                   << "set xlabel 'Longitude (degrees)' font 'Arial,12'\n"
+                   << "set ylabel 'Latitude (degrees)' font 'Arial,12'\n"
+                   << "set grid\n"
+                   << "set key outside right\n"
+                   << "set style line 1 lc rgb '#0060ad' lt 1 lw 2 pt 7 ps 1.5\n"
+                   << "set style line 2 lc rgb '#dd181f' lt 1 lw 1 pt 5 ps 1.0\n"
+                   << "plot '../results/trajectory.dat' using 1:2 with linespoints ls 1 title 'Estimated Path',\\\n"
+                   << "     '../results/trajectory.dat' using 3:4 with points ls 2 title 'GPS Measurements'\n"
+                   << "set size 1,0.4\n"
+                   << "set origin 0,0\n"
+                   << "set title 'Position Uncertainty Over Time' font 'Arial,14'\n"
+                   << "set xlabel 'Frame' font 'Arial,12'\n"
+                   << "set ylabel 'Standard Deviation (m)' font 'Arial,12'\n"
+                   << "set style line 3 lc rgb '#008000' lt 1 lw 2\n"
+                   << "set style line 4 lc rgb '#800080' lt 1 lw 2\n"
+                   << "plot '../results/error.dat' using 1:2 with lines ls 3 title 'X StdDev',\\\n"
+                   << "     '../results/error.dat' using 1:3 with lines ls 4 title 'Y StdDev'\n"
+                   << "unset multiplot\n";
         plot_script.close();
     
         // 执行 gnuplot 绘图命令
         system("cd ../results && gnuplot plot_commands.gp");       
     }
-}
-    catch(smc::exception e) {
+
+} catch(const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+}catch(smc::exception e) {
         cerr << e;
         exit(e.lCode);
     }
