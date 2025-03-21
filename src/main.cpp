@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include <ctime>
 #include <sstream>
 #include <math.h>
@@ -59,6 +60,13 @@ double integrand_var_x(const cv_state&, void*);
 double integrand_var_y(const cv_state&, void*);
 
 int main(int argc, char** argv){
+    // 创建结果目录
+    system("mkdir -p ../results");
+    // 创建输出文件
+    std::ofstream trajectory_file("../results/trajectory.dat");
+    std::ofstream error_file("../results/error.dat");
+    trajectory_file << "# X_Mean Y_Mean GPS_X GPS_Y\n";
+    error_file << "# Iteration X_StdDev Y_StdDev\n";
     /**
      * @brief 初始化时间戳和传感器对象
      * @details 创建并配置GPS和IMU观测对象，设置相关参数和初始时间戳
@@ -223,9 +231,34 @@ int main(int argc, char** argv){
             // 输出状态估计结果：x位置,y位置,x标准差,y标准差
             cout << "Iteration " << n << ": " << xm << "," << ym << "," << sqrt(xv) << "," << sqrt(yv) << endl;
             
+            // 保存轨迹数据
+            trajectory_file << xm << " " << ym << " " 
+            << Pos(0) << " " << Pos(1) << "\n";
+
+            // 保存误差数据
+            error_file << n << " " << sqrt(xv) << " " << sqrt(yv) << "\n";
+
             // 短暂延时，模拟实际系统的循环时间
             usleep(10000);  // 10毫秒
         }
+        trajectory_file.close();
+        error_file.close(); 
+        
+        std::ofstream plot_script("../results/plot_commands.gp");
+        plot_script << "set terminal png size 1200,800\n"
+                    << "set output '../results/particle_filter_results.png'\n"
+                    << "set multiplot layout 2,1\n"
+                    << "set title 'Particle Filter Trajectory'\n"
+                    << "plot '../results/trajectory.dat' using 1:2 with lines title 'Estimated Path', \\\n"
+                    << "     '../results/trajectory.dat' using 3:4 with points pt 7 title 'GPS Measurements'\n"
+                    << "set title 'Position Uncertainty'\n"
+                    << "plot '../results/error.dat' using 1:2 with lines title 'X StdDev', \\\n"
+                    << "     '../results/error.dat' using 1:3 with lines title 'Y StdDev'\n"
+                    << "unset multiplot\n";
+        plot_script.close();
+    
+        // 执行 gnuplot 绘图命令
+        system("cd ../results && gnuplot plot_commands.gp");       
     }
 }
     catch(smc::exception e) {
