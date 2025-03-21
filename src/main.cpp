@@ -249,6 +249,7 @@ int main(int argc, char** argv){
                    << "set multiplot layout 2,1 spacing 0.15\n"
                    << "set size 1,0.6\n"
                    << "set origin 0,0.4\n"
+                   << "set autoscale\n"
                    << "set title 'Particle Filter Trajectory' font 'Arial,14'\n"
                    << "set xlabel 'Longitude (degrees)' font 'Arial,12'\n"
                    << "set ylabel 'Latitude (degrees)' font 'Arial,12'\n"

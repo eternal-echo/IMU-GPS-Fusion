@@ -3,6 +3,7 @@ set output '../results/particle_filter_results.png'
 set multiplot layout 2,1 spacing 0.15
 set size 1,0.6
 set origin 0,0.4
+set autoscale
 set title 'Particle Filter Trajectory' font 'Arial,14'
 set xlabel 'Longitude (degrees)' font 'Arial,12'
 set ylabel 'Latitude (degrees)' font 'Arial,12'
