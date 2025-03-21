@@ -228,8 +228,6 @@ int main(int argc, char** argv){
             ym = Sampler.Integrate(integrand_mean_y, NULL);    // y方向位置均值
             yv = Sampler.Integrate(integrand_var_y, (void*)&ym); // y方向位置方差
                 
-            // 输出状态估计结果：x位置,y位置,x标准差,y标准差
-            cout << "Iteration " << n << ": " << xm << "," << ym << "," << sqrt(xv) << "," << sqrt(yv) << endl;
             
             // 保存轨迹数据
             trajectory_file << xm << " " << ym << " " 
@@ -243,7 +241,7 @@ int main(int argc, char** argv){
         }
         trajectory_file.close();
         error_file.close(); 
-        
+
         std::ofstream plot_script("../results/plot_commands.gp");
         plot_script << "set terminal png size 1200,800\n"
                     << "set output '../results/particle_filter_results.png'\n"
