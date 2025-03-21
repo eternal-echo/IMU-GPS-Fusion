@@ -50,7 +50,7 @@ public:
         timestamp = mktime(&tm);
 
         // 解析一行数据
-        std::stringstream ss(line);
+        std::stringstream ss(data_line);
 
         std::vector<double> values;
         double val;

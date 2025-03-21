@@ -168,9 +168,17 @@ int main(int argc, char** argv){
             if (n % 10 == 0) {  // 每10次迭代更新一次GPS数据
                 y_gps->newData = 1;
                 
-                // 位置随时间微小变化
-                Pos(0) += 0.1 * cos(heading*M_PI/180.0);
-                Pos(1) += 0.1 * sin(heading*M_PI/180.0);
+            // 位置更新（使用经纬度增量）
+            // 地球半径（米）
+            const double EARTH_RADIUS = 6378137.0;
+
+            // 计算经纬度变化
+            // 纬度方向上的位移（北向）
+            Pos(0) += (0.1 / EARTH_RADIUS) * (180.0 / M_PI);  // 0.1米转换为纬度增量
+            // 经度方向上的位移（东向），需要考虑纬度因素
+            Pos(1) += (0.1 / (EARTH_RADIUS * cos(Pos(0) * M_PI / 180.0))) * (180.0 / M_PI);
+            // 高度变化（保持不变或根据需要调整）
+ 
                 
                 if (!ftime(&timer_msec)) {
                     timestamp_msec = ((long long int) timer_msec.time) * 1000ll + 
