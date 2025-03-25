@@ -1,125 +1,111 @@
 #pragma once
 #include <string>
-#include <fstream>
 #include <vector>
 #include <armadillo>
+#include <ctime>
+#include <iomanip>
 
 class KittiDataReader {
-    public:
-        KittiDataReader(const std::string& sequence_path) {
-            // 构建完整的文件路径
-            std::string data_path = sequence_path + "/oxts/data";
-            std::string timestamp_path = sequence_path + "/oxts/timestamps.txt";
-            
-            // 获取所有数据文件
-            getDataFiles(data_path);
-            
-            // 打开时间戳文件
-            timestamp_file_.open(timestamp_path);
-            if (!timestamp_file_.is_open()) {
-                throw std::runtime_error("Failed to open timestamp file: " + timestamp_path);
-            }
-            
-            current_frame_ = 0;
-            total_frames_ = data_files_.size();
+public:
+    KittiDataReader() {
+        // 初始化数据大小
+        total_frames_ = 10;
+        current_frame_ = 0;
+        
+        const std::string timestamp_strings[10] = {
+            "2011-09-26 15:02:53.806285829",
+            "2011-09-26 15:02:53.906261008",
+            "2011-09-26 15:02:54.016257903",
+            "2011-09-26 15:02:54.116438129",
+            "2011-09-26 15:02:54.216254215",
+            "2011-09-26 15:02:54.326272876",
+            "2011-09-26 15:02:54.426336357",
+            "2011-09-26 15:02:54.526269684",
+            "2011-09-26 15:02:54.636346051",
+            "2011-09-26 15:02:54.736287665"
+        };
+
+        // 初始化数据数组
+        const double raw_data[10][30] = {
+            {48.997575979523, 8.4772921616664, 123.67921447754, 0.028707, 0.025027, 1.8595603267949, -0.003375591117178, 8.8934708746546e-05, -0.0032612001022651, -0.00087585532520119, 0.004603292935421, -0.24360046467322, 0.28123614996115, 9.8164918663125, 0.0022410039511407, -0.0008704114694047, 9.823542359862, -0.00032128793620909, -3.0983291042464e-05, 0.00037487459062091},
+            {48.997575978832, 8.4772921690814, 123.67816162109, 0.028715, 0.025046, 1.8595083267949, -0.0031647944045463, 0.00013057209042354, -0.0030709734328582, -0.00077595518693492, 0.0043769884825451, -0.24779709102901, 0.28367803828298, 9.7895779006471, -0.002433772263963, 0.002485159819632, 9.7968221565706, 6.9678140437369e-06, -9.5063753057576e-05, -0.00062822429258536},
+            {48.997575972804, 8.4772921792818, 123.67869567871, 0.028727, 0.025073, 1.8595963267949, -0.0029783667144261, 0.00023313434305671, -0.0029214446840024, -0.00062462932425889, 0.0039643915389263, -0.25030179590301, 0.2966627237396, 9.7931786792136, -0.0047809904526821, 0.015354423782631, 9.8008566619502, 0.00015605943002791, 0.00038239119942978, 0.00047537037911906},
+            {48.997575966138, 8.4772921873502, 123.6795501709, 0.028693, 0.02504, 1.8596833267949, -0.0037352348939864, 0.0003901081837531, -0.0036916197258107, -0.00068999943756783, 0.0040423620657877, -0.25185608869778, 0.27428227921672, 9.807043841644, -0.0059372267581243, -0.0073265724719923, 9.8141089112407, -0.00028600682477856, -0.00032792856733266, 0.00045921797241079},
+            {48.997575964893, 8.4772921998257, 123.67910766602, 0.028728, 0.025095, 1.8597853267949, -0.0033747244378167, 0.00092205784386615, -0.0034975810886987, -7.7694638467299e-05, 0.0041335615972316, -0.23806455175265, 0.28607625172884, 9.8051375097002, 0.0078048582615955, 0.0045317447282819, 9.812196489918, 0.00033444089293012, 0.00056592105194606, 0.00011683663938821},
+            {48.997575966826, 8.4772922201108, 123.6782913208, 0.02872, 0.025015, 1.8598513267949, -0.0028623182546859, 0.0013529788620988, -0.0031292332878399, 0.00048106650980524, 0.0037520434384209, -0.24090406766754, 0.27366307792455, 9.8153339801065, 0.0052660582352175, -0.0084283798895777, 9.8221008914527, -0.00028878302275569, -0.00093749284502222, 7.9636141751206e-06},
+            {48.997575964502, 8.4772922441016, 123.67509460449, 0.028776, 0.025164, 1.8599423267949, -0.003163001221951, 0.001362578875619, -0.0034201989263573, 0.00040430440197695, 0.003072888068214, -0.25610132374809, 0.29833360446888, 9.7886907782605, -0.0103828627659, 0.016800159551566, 9.7965677168352, 0.0003550380189486, 0.0013822236910758, 0.00012453463799366},
+            {48.99757596039, 8.4772922522513, 123.67335510254, 0.028729, 0.025027, 1.8599093267949, -0.0033245156498345, 0.0020268644446575, -0.0037643984854073, 0.00099493759360689, 0.0021134512006488, -0.24280578330726, 0.26223210072264, 9.8050149040794, 0.0031141858946567, -0.019577145613483, 9.8115081206635, -4.5833454462777e-05, -0.00073760181844095, -0.00038945419799047},
+            {48.997575957966, 8.4772922647753, 123.6714553833, 0.028763, 0.025093, 1.8600683267949, -0.002813141778141, 0.0021894656480742, -0.0033207230923767, 0.0012962910498901, 0.0015766090247302, -0.25189428169349, 0.29036998386074, 9.7930716388031, -0.0062292262983015, 0.0087551230066617, 9.8006091618258, 0.00025738595122047, 0.00038919601370936, 0.00042967114605534},
+            {48.997575957634, 8.4772922727369, 123.67011260986, 0.028798, 0.025083, 1.8601843267949, -0.0027725365875053, 0.0022537164436357, -0.0033002919431429, 0.0013690351577306, 0.0012931908241319, -0.24393513852361, 0.27544118560506, 9.8107062721225, 0.0022305698728768, -0.0067454076650298, 9.81760255923, 0.00076219248324569, 7.2896263888026e-05, 0.00045464339052339}
+        };
+
+        // 预分配数据容器
+        timestamps_.resize(total_frames_);
+        imu_data_.resize(total_frames_);
+        gps_data_.resize(total_frames_);
+
+        // 初始化数据
+        for(int i = 0; i < total_frames_; i++) {
+             // 解析时间戳
+             std::tm tm = {};
+             int microseconds;
+             sscanf(timestamp_strings[i].c_str(), 
+                    "%d-%d-%d %d:%d:%d.%d",
+                    &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                    &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+                    &microseconds);
+             
+             tm.tm_year -= 1900;  // 年份需要减去1900
+             tm.tm_mon -= 1;      // 月份从0开始
+ 
+             // 转换为Unix时间戳并加上微秒部分
+             timestamps_[i] = static_cast<double>(mktime(&tm)) + 
+                            static_cast<double>(microseconds) / 1000000.0;
+
+            // GPS数据 (lat, lon, alt, vn, ve, vf)
+            gps_data_[i] = arma::vec(6);
+            gps_data_[i](0) = raw_data[i][0];  // lat
+            gps_data_[i](1) = raw_data[i][1];  // lon
+            gps_data_[i](2) = raw_data[i][2];  // alt
+            gps_data_[i](3) = raw_data[i][6];  // vn
+            gps_data_[i](4) = raw_data[i][7];  // ve
+            gps_data_[i](5) = raw_data[i][8];  // vf
+
+            // IMU数据 (roll, pitch, yaw, wx, wy, wz, ax, ay, az)
+            imu_data_[i] = arma::vec(9);
+            imu_data_[i](0) = raw_data[i][3];  // roll
+            imu_data_[i](1) = raw_data[i][4];  // pitch
+            imu_data_[i](2) = raw_data[i][5];  // yaw
+            imu_data_[i](3) = raw_data[i][17]; // wx
+            imu_data_[i](4) = raw_data[i][18]; // wy
+            imu_data_[i](5) = raw_data[i][19]; // wz
+            imu_data_[i](6) = raw_data[i][11]; // ax
+            imu_data_[i](7) = raw_data[i][12]; // ay
+            imu_data_[i](8) = raw_data[i][13]; // az
+
         }
-    
-        bool readNextFrame(double& timestamp, arma::vec& imu_data, arma::vec& gps_data) {
-            if (current_frame_ >= total_frames_) {
-                return false;
-            }
-    
-            // 读取时间戳
-            std::string timestamp_line;
-            if (!std::getline(timestamp_file_, timestamp_line)) {
-                return false;
-            }
-    
-            // 打开当前帧的数据文件
-            std::ifstream data_file(data_files_[current_frame_]);
-            if (!data_file.is_open()) {
-                return false;
-            }
-    
-            // 读取数据
-            std::string data_line;
-            std::getline(data_file, data_line);
-            
-            // 解析时间戳
-            struct tm tm = {};
-            char ns[10];
-            sscanf(timestamp_line.c_str(), "%d-%d-%d %d:%d:%d.%s", 
-                   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-                   &tm.tm_hour, &tm.tm_min, &tm.tm_sec, ns);
-            
-            timestamp = mktime(&tm);
-    
-            // 解析数据
-            std::stringstream ss(data_line);
-            std::vector<double> values;
-            double val;
-            while (ss >> val) {
-                values.push_back(val);
-            }
-    
-            if (values.size() < 20) {
-                return false;
-            }
-    
-            // 提取IMU数据
-            imu_data = arma::vec(9);
-            imu_data(0) = values[3];  // roll
-            imu_data(1) = values[4];  // pitch
-            imu_data(2) = values[5];  // yaw
-            imu_data(3) = values[17]; // wx
-            imu_data(4) = values[18]; // wy
-            imu_data(5) = values[19]; // wz
-            imu_data(6) = values[11]; // ax
-            imu_data(7) = values[12]; // ay
-            imu_data(8) = values[13]; // az
-    
-            // 提取GPS数据
-            gps_data = arma::vec(6);
-            gps_data(0) = values[0];  // lat
-            gps_data(1) = values[1];  // lon
-            gps_data(2) = values[2];  // alt
-            gps_data(3) = values[6];  // vn
-            gps_data(4) = values[7];  // ve
-            gps_data(5) = values[8];  // vf
-    
-            current_frame_++;
-            return true;
+    }
+
+    bool readNextFrame(double& timestamp, arma::vec& imu_data, arma::vec& gps_data) {
+        if (current_frame_ >= total_frames_) {
+            return false;
         }
-    
-        int getTotalFrames() const { return total_frames_; }
-        int getCurrentFrame() const { return current_frame_; }
-    
-    private:
-        void getDataFiles(const std::string& data_path) {
-            // 使用系统命令获取所有数据文件
-            std::string cmd = "ls " + data_path + "/*.txt | sort";
-            FILE* pipe = popen(cmd.c_str(), "r");
-            if (!pipe) {
-                throw std::runtime_error("Failed to list data files");
-            }
-            
-            char buffer[256];
-            while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
-                std::string file_path(buffer);
-                if (!file_path.empty() && file_path[file_path.length()-1] == '\n') {
-                    file_path.erase(file_path.length()-1);
-                }
-                data_files_.push_back(file_path);
-            }
-            pclose(pipe);
-            
-            if (data_files_.empty()) {
-                throw std::runtime_error("No data files found in: " + data_path);
-            }
-        }
-    
-        std::vector<std::string> data_files_;
-        std::ifstream timestamp_file_;
-        int current_frame_;
-        int total_frames_;
-    };
+
+        timestamp = timestamps_[current_frame_];
+        imu_data = imu_data_[current_frame_];
+        gps_data = gps_data_[current_frame_];
+
+        current_frame_++;
+        return true;
+    }
+
+    int getTotalFrames() const { return total_frames_; }
+    int getCurrentFrame() const { return current_frame_; }
+
+private:
+    std::vector<double> timestamps_;
+    std::vector<arma::vec> imu_data_;
+    std::vector<arma::vec> gps_data_;
+    int current_frame_;
+    int total_frames_;
+};

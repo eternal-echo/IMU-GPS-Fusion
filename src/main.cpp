@@ -67,8 +67,9 @@ int main(int argc, char** argv){
     std::ofstream error_file("../results/error.dat");
     trajectory_file << "# X_Mean Y_Mean GPS_X GPS_Y\n";
     error_file << "# Iteration X_StdDev Y_StdDev\n";
-    // 指定KITTI数据集序列路径
-    std::string sequence_path = "/mnt/c/Users/Lenovo/Documents/GitHub/2011_09_26/2011_09_26_drive_0084_sync";
+    // 初始化数据读取器
+    KittiDataReader reader;  // 不再需要路径参数
+    std::cout << "Total frames: " << reader.getTotalFrames() << std::endl;
     /**
      * @brief 初始化时间戳和传感器对象
      * @details 创建并配置GPS和IMU观测对象，设置相关参数和初始时间戳
@@ -99,50 +100,28 @@ int main(int argc, char** argv){
     y_imu = new IMU_obs(3, 5, 7, (timestamp_msec/1000.0)); 
 
     // 创建坐标转换工具对象
-    CoordinateTransform transform;
+    //CoordinateTransform transform;
     // 定义存储地理坐标的结构体(经度、纬度、高度)
-    FrameCoordinates coordinates;
+    //FrameCoordinates coordinates;
 
     // 初始化传感器数据标志位
     y_gps->newData = 0;  // GPS数据更新标志
     y_imu->newData = 0;  // IMU数据更新标志
 
     // 设置模拟的初始地理坐标（示例值，可根据需要调整）
-    coordinates.first = 121.5;    // 经度
-    coordinates.second = 31.2;    // 纬度
-    coordinates.third = 10.0;     // 高度
-    transform.set_initialGeodetic(coordinates);
+    //coordinates.first = 48.997575979523;    // 经度
+    //coordinates.second = 8.4772921616664;    // 纬度
+    //coordinates.third = 123.67921447754;     // 高度
+    //transform.set_initialGeodetic(coordinates);
 
     try{
         double timestamp;
         arma::vec imu_data, gps_data;
-        
-        // 初始化数据读取器
-        KittiDataReader reader(sequence_path);
-        std::cout << "Total frames: " << reader.getTotalFrames() << std::endl;
-
         int frame_count = 0;
-        
-        while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
-            std::cout << "Processing frame " << ++frame_count 
-                     << " of " << reader.getTotalFrames() << "\r" << std::flush;
-            
-            // 处理数据
-            y_imu->newData = 1;
-            arma::vec Theta = {imu_data(0), imu_data(1), imu_data(2)}; 
-            arma::vec Omega = {imu_data(3), imu_data(4), imu_data(5)}; 
-            arma::vec Acc = {imu_data(6), imu_data(7), imu_data(8)};
-            y_imu->SetMeasurement(Theta, Omega, Acc, timestamp);
 
-            y_gps->newData = 1;
-            arma::vec Pos = {gps_data(0), gps_data(1), gps_data(2)};
-            arma::vec Velocity = {gps_data(3), gps_data(4), gps_data(5)};
-            double xerror = 5.0;  // 经度误差
-            double yerror = 5.0;  // 纬度误差
-            double zerror = 10.0; // 高度误差
-            double serror = 1.0;  // 速度误差
-            double cerror = 1.0;  // 垂直速度误差
-            y_gps->SetMeasurement(Pos, Velocity, xerror, yerror, zerror, serror, cerror, timestamp);
+        // 初始化数据读取器
+        KittiDataReader reader;
+        std::cout << "Total frames: " << reader.getTotalFrames() << std::endl;
     /**
 
     // 打印调试信息
@@ -170,49 +149,26 @@ int main(int argc, char** argv){
         Sampler.SetMoveSet(Moveset);
         Sampler.Initialise();
 
-        // 执行100次滤波迭代
-        for(int n=0; n<100; ++n) {
-            // 更新模拟的IMU和GPS数据（每次用略微不同的值，模拟运动）
-            if (n % 10 == 0) {  // 每10次迭代更新一次GPS数据
-                y_gps->newData = 1;
-                
-            // 位置更新（使用经纬度增量）
-            // 地球半径（米）
-            const double EARTH_RADIUS = 6378137.0;
-
-            // 计算经纬度变化
-            // 纬度方向上的位移（北向）
-            Pos(0) += (0.1 / EARTH_RADIUS) * (180.0 / M_PI);  // 0.1米转换为纬度增量
-            // 经度方向上的位移（东向），需要考虑纬度因素
-            Pos(1) += (0.1 / (EARTH_RADIUS * cos(Pos(0) * M_PI / 180.0))) * (180.0 / M_PI);
-            // 高度变化（保持不变或根据需要调整）
- 
-                
-                if (!ftime(&timer_msec)) {
-                    timestamp_msec = ((long long int) timer_msec.time) * 1000ll + 
-                                    (long long int) timer_msec.millitm;
-                } else {
-                    timestamp_msec = -1;
-                }
-                
-                y_gps->SetMeasurement(Pos, Velocity, xerror, yerror, zerror, serror, cerror, (timestamp_msec/1000));
-                std::cout << "Updated GPS data at iteration " << n << std::endl;
-            }
+        while(reader.readNextFrame(timestamp, imu_data, gps_data)) {
+            std::cout << "Processing frame " << ++frame_count 
+                     << " of " << reader.getTotalFrames() << "\r" << std::flush;
             
-            // 每次迭代都更新IMU数据
+            // 处理数据
             y_imu->newData = 1;
-            
-            // 姿态角略微变化
-            Theta(2) += 0.1;  // 偏航角缓慢变化
-            
-            if (!ftime(&timer_msec)) {
-                timestamp_msec = ((long long int) timer_msec.time) * 1000ll + 
-                                (long long int) timer_msec.millitm;
-            } else {
-                timestamp_msec = -1;
-            }
-            
-            y_imu->SetMeasurement(Theta, Omega, Acc, timestamp_msec/1000.0);
+            arma::vec Theta = {imu_data(0), imu_data(1), imu_data(2)}; 
+            arma::vec Omega = {imu_data(3), imu_data(4), imu_data(5)}; 
+            arma::vec Acc = {imu_data(6), imu_data(7), imu_data(8)};
+            y_imu->SetMeasurement(Theta, Omega, Acc, timestamp);
+
+            y_gps->newData = 1;
+            arma::vec Pos = {gps_data(0), gps_data(1), gps_data(2)};
+            arma::vec Velocity = {gps_data(3), gps_data(4), gps_data(5)};
+            double xerror = 5.0;  // 经度误差
+            double yerror = 5.0;  // 纬度误差
+            double zerror = 10.0; // 高度误差
+            double serror = 1.0;  // 速度误差
+            double cerror = 1.0;  // 垂直速度误差
+            y_gps->SetMeasurement(Pos, Velocity, xerror, yerror, zerror, serror, cerror, timestamp);
             
             // 执行一次滤波迭代(包含预测和更新步骤)
             Sampler.Iterate();
@@ -250,24 +206,25 @@ int main(int argc, char** argv){
                    << "set size 1,0.6\n"
                    << "set origin 0,0.4\n"
                    << "set autoscale\n"
-                   << "set title 'Particle Filter Trajectory' font 'Arial,14'\n"
+                   << "set title 'Particle Filter Trajectory (KITTI Dataset)' font 'Arial,14'\n"
                    << "set xlabel 'Longitude (degrees)' font 'Arial,12'\n"
                    << "set ylabel 'Latitude (degrees)' font 'Arial,12'\n"
                    << "set grid\n"
                    << "set key outside right\n"
                    << "set style line 1 lc rgb '#0060ad' lt 1 lw 2 pt 7 ps 1.5\n"
                    << "set style line 2 lc rgb '#dd181f' lt 1 lw 1 pt 5 ps 1.0\n"
-                   << "plot '../results/trajectory.dat' using 1:2 with linespoints ls 1 title 'Estimated Path',\\\n"
-                   << "     '../results/trajectory.dat' using 3:4 with points ls 2 title 'GPS Measurements'\n"
+                   << "# Switch x and y columns since longitude is x and latitude is y\n"
+                   << "plot '../results/trajectory.dat' using 2:1 with linespoints ls 1 title 'Estimated Path',\\\n"
+                   << "     '../results/trajectory.dat' using 4:3 with points ls 2 title 'GPS Measurements'\n"
                    << "set size 1,0.4\n"
                    << "set origin 0,0\n"
-                   << "set title 'Position Uncertainty Over Time' font 'Arial,14'\n"
-                   << "set xlabel 'Frame' font 'Arial,12'\n"
-                   << "set ylabel 'Standard Deviation (m)' font 'Arial,12'\n"
+                   << "set title 'Estimation Uncertainty vs Time' font 'Arial,14'\n"
+                   << "set xlabel 'Frame Number' font 'Arial,12'\n"
+                   << "set ylabel 'Standard Deviation (degrees)' font 'Arial,12'\n"
                    << "set style line 3 lc rgb '#008000' lt 1 lw 2\n"
                    << "set style line 4 lc rgb '#800080' lt 1 lw 2\n"
-                   << "plot '../results/error.dat' using 1:2 with lines ls 3 title 'X StdDev',\\\n"
-                   << "     '../results/error.dat' using 1:3 with lines ls 4 title 'Y StdDev'\n"
+                   << "plot '../results/error.dat' using 1:2 with lines ls 3 title 'Latitude StdDev',\\\n"
+                   << "     '../results/error.dat' using 1:3 with lines ls 4 title 'Longitude StdDev'\n"
                    << "unset multiplot\n";
         plot_script.close();
     
