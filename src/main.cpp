@@ -190,7 +190,8 @@ int main(int argc, char** argv){
             << Pos(0) << " " << Pos(1) << "\n";
 
             // 保存误差数据
-            error_file << std::setprecision(6) << n << " " << sqrt(xv) << " " << sqrt(yv) << " " << timestamp << "\n";
+            error_file << std::setprecision(6) << frame_count << " " 
+               << sqrt(xv) << " " << sqrt(yv) << " " << timestamp << "\n";
             std::cout << "\nProcessing complete!" << std::endl;
 
             // 短暂延时，模拟实际系统的循环时间
@@ -230,12 +231,11 @@ int main(int argc, char** argv){
     
         // 执行 gnuplot 绘图命令
         system("cd ../results && gnuplot plot_commands.gp");       
-    }
 
 } catch(const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;
-}catch(smc::exception e) {
+} catch(smc::exception e) {
         cerr << e;
         exit(e.lCode);
     }
